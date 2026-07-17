@@ -95,11 +95,13 @@ class RestModeReply:
 def get_main_menu_keyboard():
     """获取主菜单键盘"""
     keyboard = [
-        [InlineKeyboardButton("🚀 启动", callback_data="menu_start"),
-         InlineKeyboardButton("⏹ 停止", callback_data="menu_stop")],
-        [InlineKeyboardButton("📒 记事本", callback_data="menu_memo")],
-        [InlineKeyboardButton("📐 计算助手", callback_data="menu_calc")],
-        [InlineKeyboardButton("⚙️ 关键词管理", callback_data="menu_keywords")],
+        [InlineKeyboardButton("🚀 启动（休息模式）", callback_data="menu_start"),
+         InlineKeyboardButton("⏹ 停止（工作模式）", callback_data="menu_stop")],
+        [InlineKeyboardButton("📒 记事本", callback_data="menu_memo"),
+         InlineKeyboardButton("📐 计算助手", callback_data="menu_calc")],
+        [InlineKeyboardButton("⚙️ 关键词管理", callback_data="menu_keywords"),
+         InlineKeyboardButton("✏️ 设置回复", callback_data="menu_setreply")],
+        [InlineKeyboardButton("❓ 帮助", callback_data="menu_help")],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -179,6 +181,25 @@ async def menu_callback(update: Update, context: CallbackContext):
             reply_markup=get_main_menu_keyboard(),
         )
 
+    elif data == "menu_setreply":
+        current_reply = RestModeReply.get_reply()
+        context.user_data['awaiting_reply'] = True
+        await query.edit_message_text(
+            f"✏️ **设置休息模式自动回复**\n\n"
+            f"当前回复：\n`{current_reply}`\n\n"
+            f"请直接发送新的自动回复内容。\n"
+            f"发送 `取消` 或 `菜单` 可取消设置。",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=get_main_menu_keyboard(),
+        )
+
+    elif data == "menu_help":
+        await query.edit_message_text(
+            get_help_text(),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=get_main_menu_keyboard(),
+        )
+
 
 # ──────────────── 消息路由 ────────────────
 
@@ -197,6 +218,17 @@ async def message_handler(update: Update, context: CallbackContext):
 
     # ========== 主人专属命令（任何模式下都响应） ==========
     if is_owner:
+        # 检查是否在等待回复内容（从菜单点击"设置回复"后触发）
+        if context.user_data.get('awaiting_reply'):
+            if text in ("取消", "菜单", "/menu"):
+                context.user_data['awaiting_reply'] = False
+                await msg.reply_text("✅ 已取消设置回复")
+                return
+            RestModeReply.set_reply(text)
+            context.user_data['awaiting_reply'] = False
+            await msg.reply_text(f"✅ 休息模式自动回复已更新为：\n{text}")
+            return
+
         # 菜单
         if text == "/menu" or text == "菜单":
             await msg.reply_text(
@@ -402,12 +434,9 @@ async def message_handler(update: Update, context: CallbackContext):
         pass
 
 
-async def help_handler(update: Update, context: CallbackContext):
-    """帮助命令"""
-    msg = update.message
-    if not msg:
-        return
-    help_text = (
+def get_help_text() -> str:
+    """获取帮助文本（供菜单和命令共享）"""
+    return (
         "🤖 **企业版 Telegram 机器人 — 帮助**\n\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "**菜单按钮**\n"
@@ -435,7 +464,14 @@ async def help_handler(update: Update, context: CallbackContext):
         "· 休息模式：自动回复 + 关键词特别提醒\n"
         "· 📒 备忘录记事本功能始终可用，不受模式限制"
     )
-    await msg.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
+
+
+async def help_handler(update: Update, context: CallbackContext):
+    """帮助命令"""
+    msg = update.message
+    if not msg:
+        return
+    await msg.reply_text(get_help_text(), parse_mode=ParseMode.MARKDOWN)
 
 
 async def unknown_handler(update: Update, context: CallbackContext):
