@@ -1,0 +1,24 @@
+services:
+  # Telegram 企业版机器人
+  - type: web
+    name: telegram-bot-enterprise
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    healthCheckPath: /
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+        required: true
+      - key: OWNER_ID
+        sync: false
+        required: true
+      - key: OWNER_USERNAME
+        sync: false
+        required: true
+      - key: DEFAULT_MODE
+        value: work
+      - key: REST_MODE_REPLY
+        value: 主人正在休息，稍后会回复您，请耐心等待。😊
