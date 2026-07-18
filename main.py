@@ -3,7 +3,7 @@ import os
 import sys
 import threading
 import logging
-from telegram import Update
+from telegram import Update, BotCommand
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -49,7 +49,7 @@ def main():
 
     # ─── 第2步：构建 Bot Application ───
     logger.info("🤖 正在构建 Telegram Bot Application...")
-    app = Application.builder().token(Config.BOT_TOKEN).build()
+    app = Application.builder().token(Config.BOT_TOKEN).post_init(setup_commands).build()
 
     # 注册命令处理器
     app.add_handler(CommandHandler("start", message_handler))
@@ -73,6 +73,24 @@ def main():
     logger.info("🚀 机器人已就绪，开始轮询 Telegram 消息...")
     logger.info("💡 发送 /menu 或「菜单」打开控制面板")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+
+async def setup_commands(app: Application):
+    """设置 Telegram 机器人左下角菜单按钮命令列表"""
+    commands = [
+        BotCommand("start", "🚀 启动（休息模式）"),
+        BotCommand("stop", "⏹ 停止（工作模式）"),
+        BotCommand("menu", "📋 控制面板"),
+        BotCommand("memo", "📒 备忘录记事本"),
+        BotCommand("calc", "📐 计算助手"),
+        BotCommand("keywords", "⚙️ 关键词管理"),
+        BotCommand("help", "❓ 帮助"),
+    ]
+    try:
+        await app.bot.set_my_commands(commands)
+        logger.info("✅ 机器人菜单命令已更新")
+    except Exception as e:
+        logger.warning(f"⚠️ 设置菜单命令失败: {e}")
 
 
 def _start_health_server_only():
